@@ -12,17 +12,36 @@ import RealityKit
 import ARKit
 
 struct ContentView: View {
+    @EnvironmentObject var surfaceVM: SurfaceViewModel
+
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .bottom) {
             ARViewContainer()
                 .edgesIgnoringSafeArea(.all)
 
-            Text("Move your phone to detect a surface, then tap to place the test surface.")
-                .padding()
-                .background(Color.black.opacity(0.5))
-                .foregroundColor(.white)
-                .font(.footnote)
+            controlPanel
         }
     }
-}
 
+    private var controlPanel: some View {
+        VStack(spacing: 8) {
+            Text("Spot: \(Int(surfaceVM.spot))  σ: \(String(format: "%.2f", surfaceVM.volatility))  T: \(String(format: "%.2f", surfaceVM.timeMax))")
+                .font(.caption)
+                .padding(.top, 4)
+
+            Slider(value: $surfaceVM.spot, in: 50...150, step: 1)
+            Slider(value: $surfaceVM.volatility, in: 0.05...0.8, step: 0.01)
+            Slider(value: $surfaceVM.timeMax, in: 0.1...2.0, step: 0.05)
+
+            Picker("Mode", selection: $surfaceVM.mode) {
+                Text("Price").tag(SurfaceMode.price)
+                Text("Delta").tag(SurfaceMode.delta)
+            }
+            .pickerStyle(.segmented)
+
+            Spacer().frame(height: 8)
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+}

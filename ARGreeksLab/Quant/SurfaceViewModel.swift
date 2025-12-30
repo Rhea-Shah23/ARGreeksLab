@@ -4,22 +4,15 @@
 //
 //  Created by Rhea Shah on 12/30/25.
 //
-
 import Foundation
 import Combine
 
-enum SurfaceMode {
-    case price
-    case delta
-}
-
 final class SurfaceViewModel: ObservableObject {
 
-    // Exposed parameters for UI
     @Published var spot: Double = 100.0
     @Published var strike: Double = 100.0
-    @Published var timeMax: Double = 1.0      // years for top of surface
-    @Published var volatility: Double = 0.2   // sigma
+    @Published var timeMax: Double = 1.0
+    @Published var volatility: Double = 0.2
     @Published var rate: Double = 0.01
     @Published var dividend: Double = 0.0
     @Published var optionType: OptionType = .call
@@ -32,7 +25,7 @@ final class SurfaceViewModel: ObservableObject {
         OptionParameters(
             spot: spot,
             strike: strike,
-            time: 0.5,             // will be overwritten in grid
+            time: 0.5,
             volatility: volatility,
             rate: rate,
             dividend: dividend,
@@ -40,7 +33,6 @@ final class SurfaceViewModel: ObservableObject {
         )
     }
 
-    /// Generate a height map [[Float]] for the current settings
     func generateHeights() -> [[Float]] {
         let base = makeBaseParams()
 
@@ -55,7 +47,6 @@ final class SurfaceViewModel: ObservableObject {
             mode: mode
         )
 
-        // Convert Double grid.values to [[Float]]
         var heights = Array(
             repeating: Array(repeating: Float(0), count: tSteps),
             count: sSteps
@@ -67,10 +58,9 @@ final class SurfaceViewModel: ObservableObject {
             }
         }
 
-        // Normalize heights a bit so AR scale looks reasonable
         let flat = heights.flatMap { $0 }
         if let maxAbs = flat.map({ abs($0) }).max(), maxAbs > 0 {
-            let scale: Float = 0.1 / maxAbs   // scale tallest peak to ~0.1m
+            let scale: Float = 0.1 / maxAbs
             for i in 0..<sSteps {
                 for j in 0..<tSteps {
                     heights[i][j] *= scale
@@ -81,4 +71,5 @@ final class SurfaceViewModel: ObservableObject {
         return heights
     }
 }
+
 

@@ -17,7 +17,7 @@ enum OptionType {
 struct OptionParameters {
     var spot: Double      // S
     var strike: Double    // K
-    var time: Double      // T (years)
+    var time: Double      // T in years
     var volatility: Double // sigma
     var rate: Double      // r
     var dividend: Double  // q
@@ -27,8 +27,11 @@ struct OptionParameters {
 struct Quant {
 
     static func normalCDF(_ x: Double) -> Double {
-        // Approximation of standard normal CDF
-        return 0.5 * erfc(-x / sqrt(2.0))
+        0.5 * erfc(-x / sqrt(2.0))
+    }
+
+    static func normalPDF(_ x: Double) -> Double {
+        (1.0 / sqrt(2.0 * Double.pi)) * exp(-0.5 * x * x)
     }
 
     static func d1(params p: OptionParameters) -> Double {
@@ -43,7 +46,7 @@ struct Quant {
     }
 
     static func d2(params p: OptionParameters) -> Double {
-        return d1(params: p) - p.volatility * sqrt(p.time)
+        d1(params: p) - p.volatility * sqrt(p.time)
     }
 
     static func price(params p: OptionParameters) -> Double {
@@ -63,17 +66,6 @@ struct Quant {
             return K * exp(-r * T) * normalCDF(-d2) - S * exp(-q * T) * normalCDF(-d1)
         }
     }
-}
-
-// helper
-extension Quant {
-    static func normalPDF(_ x: Double) -> Double {
-        return (1.0 / sqrt(2.0 * Double.pi)) * exp(-0.5 * x * x)
-    }
-}
-
-// european greeks
-extension Quant {
 
     static func delta(params p: OptionParameters) -> Double {
         let d1 = d1(params: p)
@@ -140,21 +132,3 @@ extension Quant {
         }
     }
 }
-
-
-#if DEBUG
-func testBlackScholes() {
-    let params = OptionParameters(
-        spot: 100,
-        strike: 100,
-        time: 0.5,
-        volatility: 0.2,
-        rate: 0.01,
-        dividend: 0.0,
-        type: .call
-    )
-    let p = Quant.price(params: params)
-    print("Test call price:", p)
-}
-#endif
-

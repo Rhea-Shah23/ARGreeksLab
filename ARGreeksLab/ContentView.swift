@@ -29,8 +29,13 @@ struct ContentView: View {
                 .font(.caption)
                 .padding(.top, 4)
 
+            // slider: spot
             Slider(value: $surfaceVM.spot, in: 50...150, step: 1)
+
+            //slider: volatility
             Slider(value: $surfaceVM.volatility, in: 0.05...0.8, step: 0.01)
+
+            // slider: time max
             Slider(value: $surfaceVM.timeMax, in: 0.1...2.0, step: 0.05)
 
             Picker("Mode", selection: $surfaceVM.mode) {
@@ -45,3 +50,4 @@ struct ContentView: View {
         .background(.ultraThinMaterial)
     }
 }
+

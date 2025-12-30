@@ -7,10 +7,15 @@
 
 import Foundation
 
+enum SurfaceMode {
+    case price
+    case delta
+}
+
 struct SurfaceGrid {
-    let sAxis: [Double]   // underlying prices
-    let tAxis: [Double]   // times to expiry
-    let values: [[Double]] // e.g., price or delta grid
+    let sAxis: [Double]
+    let tAxis: [Double]
+    let values: [[Double]] // [sIndex][tIndex]
 
     static func generate(
         base: OptionParameters,
@@ -29,11 +34,13 @@ struct SurfaceGrid {
         let ds = (sMax - sMin) / Double(sSteps - 1)
         let dt = (tMax - tMin) / Double(tSteps - 1)
 
-        var sAxis = [Double]()
-        var tAxis = [Double]()
+        var sAxis: [Double] = []
+        var tAxis: [Double] = []
+
         for i in 0..<sSteps {
             sAxis.append(sMin + Double(i) * ds)
         }
+
         for j in 0..<tSteps {
             tAxis.append(tMin + Double(j) * dt)
         }

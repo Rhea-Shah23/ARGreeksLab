@@ -4,23 +4,21 @@
 //
 //  Created by Rhea Shah on 12/30/25.
 //
-
 import SwiftUI
 import RealityKit
 import ARKit
 
 struct ARViewContainer: UIViewRepresentable {
+    @EnvironmentObject var surfaceVM: SurfaceViewModel
 
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
 
-        // configure ar session
         let config = ARWorldTrackingConfiguration()
-        config.planeDetection = [.horizontal]      // detect tables, floors
-        config.environmentTexturing = .automatic   // nicer lighting
+        config.planeDetection = [.horizontal]
+        config.environmentTexturing = .automatic
         arView.session.run(config)
 
-        // add tap gesture recognizer
         let tap = UITapGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleTap(_:))
@@ -28,11 +26,13 @@ struct ARViewContainer: UIViewRepresentable {
         arView.addGestureRecognizer(tap)
 
         context.coordinator.view = arView
+        context.coordinator.surfaceVM = surfaceVM
+
         return arView
     }
 
     func updateUIView(_ uiView: ARView, context: Context) {
-        // nothing for now
+        context.coordinator.surfaceVM = surfaceVM
     }
 
     func makeCoordinator() -> Coordinator {
@@ -41,40 +41,41 @@ struct ARViewContainer: UIViewRepresentable {
 
     class Coordinator: NSObject {
         weak var view: ARView?
+        var surfaceVM: SurfaceViewModel?
 
         @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
-            guard let view = view else { return }
+            guard let view = view,
+                  let vm = surfaceVM else { return }
 
             let location = recognizer.location(in: view)
-
-            // raycast to find a horizontal plane at this screen point
             let results = view.raycast(
                 from: location,
-                allowing: .existingPlaneGeometry,
+                allowing: .existingPlaneInfinite,
                 alignment: .horizontal
             )
 
             guard let firstResult = results.first else { return }
 
-            let position = SIMD3(
+            let position = SIMD3<Float>(
                 x: firstResult.worldTransform.columns.3.x,
                 y: firstResult.worldTransform.columns.3.y,
                 z: firstResult.worldTransform.columns.3.z
             )
 
-            placeSurface(at: position, in: view)
+            placeSurface(at: position, in: view, using: vm)
         }
 
-        private func placeSurface(at position: SIMD3<Float>, in view: ARView) {
-            // Remove previous anchors (only one surface at a time for now)
+        private func placeSurface(
+            at position: SIMD3<Float>,
+            in view: ARView,
+            using vm: SurfaceViewModel
+        ) {
             view.scene.anchors.removeAll()
 
-            // Generate a simple height map
-            let gridSize = 30
-            let width: Float = 0.3     // meters in AR world
-            let depth: Float = 0.3
+            let heights = vm.generateHeights()
 
-            let heights = generateHeightMap(size: gridSize)
+            let width: Float = 0.3
+            let depth: Float = 0.3
 
             let mesh = makeMeshFromHeightMap(
                 heights: heights,
@@ -86,27 +87,14 @@ struct ARViewContainer: UIViewRepresentable {
             material.color = .init(tint: .blue, texture: nil)
 
             let modelEntity = ModelEntity(mesh: mesh, materials: [material])
-            modelEntity.position = position
 
-            let anchor = AnchorEntity(world: position)
+            var pos = position
+            pos.y += 0.001
+            modelEntity.position = pos
+
+            let anchor = AnchorEntity(world: pos)
             anchor.addChild(modelEntity)
             view.scene.addAnchor(anchor)
-        }
-
-        private func generateHeightMap(size: Int) -> [[Float]] {
-            var data = Array(
-                repeating: Array(repeating: Float(0), count: size),
-                count: size
-            )
-
-            for i in 0..<size {
-                for j in 0..<size {
-                    let x = Float(i) / Float(size - 1) * Float.pi * 2
-                    let y = Float(j) / Float(size - 1) * Float.pi * 2
-                    data[i][j] = 0.05 * sin(x) * cos(y) // small wave
-                }
-            }
-            return data
         }
 
         private func makeMeshFromHeightMap(
@@ -123,7 +111,6 @@ struct ARViewContainer: UIViewRepresentable {
             let dx = width / Float(cols - 1)
             let dz = depth / Float(rows - 1)
 
-            // center around (0,0)
             let xOffset = -width / 2
             let zOffset = -depth / 2
 
@@ -136,7 +123,6 @@ struct ARViewContainer: UIViewRepresentable {
                 }
             }
 
-            // two triangles per grid cell
             for i in 0..<(rows - 1) {
                 for j in 0..<(cols - 1) {
                     let topLeft = UInt32(i * cols + j)
@@ -157,7 +143,5 @@ struct ARViewContainer: UIViewRepresentable {
 
             return try! MeshResource.generate(from: [meshDescriptor])
         }
-
     }
 }
-

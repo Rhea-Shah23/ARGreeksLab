@@ -1,9 +1,8 @@
-//
-//  ARViewContainer.swift
-//  ARGreeksLab
-//
-//  Created by Rhea Shah on 12/30/25.
-//
+//ARViewContainer
+//Part of ARGreeksLab
+
+// Created by Rhea Shah on 12/30/2025
+
 import SwiftUI
 import RealityKit
 import ARKit
@@ -19,6 +18,7 @@ struct ARViewContainer: UIViewRepresentable {
         config.environmentTexturing = .automatic
         arView.session.run(config)
 
+        // Tap to place or inspect
         let tap = UITapGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleTap(_:))
@@ -43,11 +43,29 @@ struct ARViewContainer: UIViewRepresentable {
         weak var view: ARView?
         var surfaceVM: SurfaceViewModel?
 
+        // Keep a reference to the last model entity and its grid
+        private var currentModel: ModelEntity?
+        private var lastHeights: [[Float]] = []
+        private var lastSAxis: [Double] = []
+        private var lastTAxis: [Double] = []
+
         @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
             guard let view = view,
                   let vm = surfaceVM else { return }
 
             let location = recognizer.location(in: view)
+
+            // First try hitting existing model (inspect)
+            if let model = currentModel,
+               let result = view.hitTest(location).first(where: { $0.entity == model }) {
+
+                // position in model's local coordinates
+                let local = result.position
+                inspectHit(position: local, using: vm)
+                return
+            }
+
+            // Otherwise, place a new surface on plane
             let results = view.raycast(
                 from: location,
                 allowing: .existingPlaneInfinite,
@@ -71,14 +89,19 @@ struct ARViewContainer: UIViewRepresentable {
             using vm: SurfaceViewModel
         ) {
             view.scene.anchors.removeAll()
+            currentModel = nil
 
-            let heights = vm.generateHeights()
+            // Generate heights + remember axes for inspection
+            let surfaceData = vm.generateSurfaceData()
+            lastHeights = surfaceData.heights
+            lastSAxis = surfaceData.sAxis
+            lastTAxis = surfaceData.tAxis
 
             let width: Float = 0.3
             let depth: Float = 0.3
 
             let mesh = makeMeshFromHeightMap(
-                heights: heights,
+                heights: lastHeights,
                 width: width,
                 depth: depth
             )
@@ -95,6 +118,35 @@ struct ARViewContainer: UIViewRepresentable {
             let anchor = AnchorEntity(world: pos)
             anchor.addChild(modelEntity)
             view.scene.addAnchor(anchor)
+
+            currentModel = modelEntity
+        }
+
+        private func inspectHit(
+            position: SIMD3<Float>,
+            using vm: SurfaceViewModel
+        ) {
+            guard !lastHeights.isEmpty,
+                  !lastSAxis.isEmpty,
+                  !lastTAxis.isEmpty else { return }
+
+            let rows = lastHeights.count
+            let cols = lastHeights.first?.count ?? 0
+
+            let width: Float = 0.3
+            let depth: Float = 0.3
+            let dx = width / Float(cols - 1)
+            let dz = depth / Float(rows - 1)
+            let xOffset = -width / 2
+            let zOffset = -depth / 2
+
+            let jFloat = (position.x - xOffset) / dx
+            let iFloat = (position.z - zOffset) / dz
+
+            let i = max(0, min(rows - 1, Int(round(iFloat))))
+            let j = max(0, min(cols - 1, Int(round(jFloat))))
+
+            vm.updateSelection(i: i, j: j, sAxis: lastSAxis, tAxis: lastTAxis)
         }
 
         private func makeMeshFromHeightMap(

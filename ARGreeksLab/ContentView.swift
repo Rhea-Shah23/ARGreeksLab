@@ -15,11 +15,37 @@ struct ContentView: View {
     @EnvironmentObject var surfaceVM: SurfaceViewModel
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             ARViewContainer()
                 .edgesIgnoringSafeArea(.all)
 
-            controlPanel
+            VStack {
+                selectionInfo
+                Spacer()
+                controlPanel
+            }
+        }
+    }
+
+    private var selectionInfo: some View {
+        Group {
+            if let s = surfaceVM.selectedS,
+               let t = surfaceVM.selectedT,
+               let price = surfaceVM.selectedPrice,
+               let delta = surfaceVM.selectedDelta {
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(format: "S = %.2f, T = %.2f", s, t))
+                    Text(String(format: "Price = %.4f", price))
+                    Text(String(format: "Delta = %.4f", delta))
+                }
+                .font(.caption)
+                .padding(8)
+                .background(Color.black.opacity(0.6))
+                .foregroundColor(.white)
+                .cornerRadius(8)
+                .padding(.top, 40)
+            }
         }
     }
 
@@ -29,13 +55,10 @@ struct ContentView: View {
                 .font(.caption)
                 .padding(.top, 4)
 
-            // slider: spot
             Slider(value: $surfaceVM.spot, in: 50...150, step: 1)
 
-            //slider: volatility
             Slider(value: $surfaceVM.volatility, in: 0.05...0.8, step: 0.01)
 
-            // slider: time max
             Slider(value: $surfaceVM.timeMax, in: 0.1...2.0, step: 0.05)
 
             Picker("Mode", selection: $surfaceVM.mode) {

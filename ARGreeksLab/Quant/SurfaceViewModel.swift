@@ -1,9 +1,8 @@
-//
-//  SurfaceViewModel.swift
-//  ARGreeksLab
-//
-//  Created by Rhea Shah on 12/30/25.
-//
+// SurfaceViewModel.swift
+// Part of ARGreeksLab
+
+// Created by Rhea Shah on 12/30/2025
+
 import Foundation
 import Combine
 
@@ -21,6 +20,18 @@ final class SurfaceViewModel: ObservableObject {
     let sSteps: Int = 40
     let tSteps: Int = 40
 
+    // Selection info for tap-to-inspect
+    @Published var selectedS: Double?
+    @Published var selectedT: Double?
+    @Published var selectedPrice: Double?
+    @Published var selectedDelta: Double?
+
+    struct SurfaceData {
+        let heights: [[Float]]
+        let sAxis: [Double]
+        let tAxis: [Double]
+    }
+
     func makeBaseParams() -> OptionParameters {
         OptionParameters(
             spot: spot,
@@ -33,7 +44,7 @@ final class SurfaceViewModel: ObservableObject {
         )
     }
 
-    func generateHeights() -> [[Float]] {
+    func generateSurfaceData() -> SurfaceData {
         let base = makeBaseParams()
 
         let grid = SurfaceGrid.generate(
@@ -68,8 +79,25 @@ final class SurfaceViewModel: ObservableObject {
             }
         }
 
-        return heights
+        return SurfaceData(heights: heights, sAxis: grid.sAxis, tAxis: grid.tAxis)
+    }
+
+    func generateHeights() -> [[Float]] {
+        generateSurfaceData().heights
+    }
+
+    func updateSelection(i: Int, j: Int, sAxis: [Double], tAxis: [Double]) {
+        guard i >= 0, i < sAxis.count,
+              j >= 0, j < tAxis.count else { return }
+
+        let base = makeBaseParams()
+        var p = base
+        p.spot = sAxis[i]
+        p.time = tAxis[j]
+
+        selectedS = sAxis[i]
+        selectedT = tAxis[j]
+        selectedPrice = Quant.price(params: p)
+        selectedDelta = Quant.delta(params: p)
     }
 }
-
-

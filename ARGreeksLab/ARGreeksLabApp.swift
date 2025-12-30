@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct ARGreeksLabApp: App {
+    @StateObject private var surfaceVM = SurfaceViewModel()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(surfaceVM)
         }
     }
 }

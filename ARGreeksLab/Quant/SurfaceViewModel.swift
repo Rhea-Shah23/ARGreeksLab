@@ -20,7 +20,7 @@ final class SurfaceViewModel: ObservableObject {
     let sSteps: Int = 40
     let tSteps: Int = 40
 
-    // Selection info for tap-to-inspect
+    // Selection info for overlay
     @Published var selectedS: Double?
     @Published var selectedT: Double?
     @Published var selectedPrice: Double?
@@ -69,6 +69,7 @@ final class SurfaceViewModel: ObservableObject {
             }
         }
 
+        // Normalize heights for AR scale
         let flat = heights.flatMap { $0 }
         if let maxAbs = flat.map({ abs($0) }).max(), maxAbs > 0 {
             let scale: Float = 0.1 / maxAbs

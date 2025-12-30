@@ -1,11 +1,9 @@
-//
 //  ContentView.swift
 //  ARGreeksLab
-//
 //  Created by Rhea Shah on 12/29/25.
 
 // vision statement: lets users see option price surfaces and greeks as interactive 3D and AR objects
-//
+
 
 import SwiftUI
 import RealityKit
@@ -73,4 +71,3 @@ struct ContentView: View {
         .background(.ultraThinMaterial)
     }
 }
-

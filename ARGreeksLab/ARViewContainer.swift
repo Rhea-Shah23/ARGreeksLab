@@ -18,7 +18,6 @@ struct ARViewContainer: UIViewRepresentable {
         config.environmentTexturing = .automatic
         arView.session.run(config)
 
-        // Tap to place or inspect
         let tap = UITapGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleTap(_:))
@@ -43,7 +42,7 @@ struct ARViewContainer: UIViewRepresentable {
         weak var view: ARView?
         var surfaceVM: SurfaceViewModel?
 
-        // Keep a reference to the last model entity and its grid
+        // Keep last placed model and its grid to interpret taps
         private var currentModel: ModelEntity?
         private var lastHeights: [[Float]] = []
         private var lastSAxis: [Double] = []
@@ -55,17 +54,17 @@ struct ARViewContainer: UIViewRepresentable {
 
             let location = recognizer.location(in: view)
 
-            // First try hitting existing model (inspect)
-            if let model = currentModel,
-               let result = view.hitTest(location).first(where: { $0.entity == model }) {
-
-                // position in model's local coordinates
-                let local = result.position
-                inspectHit(position: local, using: vm)
-                return
+            // 1) Try tapping existing model (inspect)
+            if let model = currentModel {
+                let hits = view.hitTest(location)
+                if let result = hits.first(where: { $0.entity == model }) {
+                    let local = result.position   // local coordinates in model space
+                    inspectHit(localPosition: local, using: vm)
+                    return
+                }
             }
 
-            // Otherwise, place a new surface on plane
+            // 2) Otherwise, place new surface on detected plane
             let results = view.raycast(
                 from: location,
                 allowing: .existingPlaneInfinite,
@@ -91,11 +90,11 @@ struct ARViewContainer: UIViewRepresentable {
             view.scene.anchors.removeAll()
             currentModel = nil
 
-            // Generate heights + remember axes for inspection
-            let surfaceData = vm.generateSurfaceData()
-            lastHeights = surfaceData.heights
-            lastSAxis = surfaceData.sAxis
-            lastTAxis = surfaceData.tAxis
+            // Get surface data from quant engine
+            let data = vm.generateSurfaceData()
+            lastHeights = data.heights
+            lastSAxis = data.sAxis
+            lastTAxis = data.tAxis
 
             let width: Float = 0.3
             let depth: Float = 0.3
@@ -123,7 +122,7 @@ struct ARViewContainer: UIViewRepresentable {
         }
 
         private func inspectHit(
-            position: SIMD3<Float>,
+            localPosition: SIMD3<Float>,
             using vm: SurfaceViewModel
         ) {
             guard !lastHeights.isEmpty,
@@ -132,6 +131,7 @@ struct ARViewContainer: UIViewRepresentable {
 
             let rows = lastHeights.count
             let cols = lastHeights.first?.count ?? 0
+            guard rows > 1, cols > 1 else { return }
 
             let width: Float = 0.3
             let depth: Float = 0.3
@@ -140,8 +140,8 @@ struct ARViewContainer: UIViewRepresentable {
             let xOffset = -width / 2
             let zOffset = -depth / 2
 
-            let jFloat = (position.x - xOffset) / dx
-            let iFloat = (position.z - zOffset) / dz
+            let jFloat = (localPosition.x - xOffset) / dx
+            let iFloat = (localPosition.z - zOffset) / dz
 
             let i = max(0, min(rows - 1, Int(round(iFloat))))
             let j = max(0, min(cols - 1, Int(round(jFloat))))
@@ -197,3 +197,4 @@ struct ARViewContainer: UIViewRepresentable {
         }
     }
 }
+

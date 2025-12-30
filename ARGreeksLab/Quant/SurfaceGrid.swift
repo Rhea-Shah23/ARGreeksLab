@@ -64,9 +64,3 @@ struct SurfaceGrid {
         return SurfaceGrid(sAxis: sAxis, tAxis: tAxis, values: values)
     }
 }
-
-enum SurfaceMode {
-    case price
-    case delta
-}
-

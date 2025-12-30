@@ -50,7 +50,7 @@ struct ARViewContainer: UIViewRepresentable {
             // raycast to find a horizontal plane at this screen point
             let results = view.raycast(
                 from: location,
-                allowing: .estimatedPlane,
+                allowing: .existingPlaneGeometry,
                 alignment: .horizontal
             )
 

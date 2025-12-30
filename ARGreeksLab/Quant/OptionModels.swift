@@ -65,6 +65,83 @@ struct Quant {
     }
 }
 
+// helper
+extension Quant {
+    static func normalPDF(_ x: Double) -> Double {
+        return (1.0 / sqrt(2.0 * Double.pi)) * exp(-0.5 * x * x)
+    }
+}
+
+// european greeks
+extension Quant {
+
+    static func delta(params p: OptionParameters) -> Double {
+        let d1 = d1(params: p)
+        switch p.type {
+        case .call:
+            return exp(-p.dividend * p.time) * normalCDF(d1)
+        case .put:
+            return exp(-p.dividend * p.time) * (normalCDF(d1) - 1.0)
+        }
+    }
+
+    static func gamma(params p: OptionParameters) -> Double {
+        let d1 = d1(params: p)
+        let S = p.spot
+        let T = p.time
+        let sigma = p.volatility
+        return exp(-p.dividend * T) * normalPDF(d1) / (S * sigma * sqrt(T))
+    }
+
+    static func vega(params p: OptionParameters) -> Double {
+        let d1 = d1(params: p)
+        let S = p.spot
+        let T = p.time
+        return S * exp(-p.dividend * T) * normalPDF(d1) * sqrt(T)
+    }
+
+    static func theta(params p: OptionParameters) -> Double {
+        let S = p.spot
+        let K = p.strike
+        let T = p.time
+        let r = p.rate
+        let q = p.dividend
+        let sigma = p.volatility
+
+        let d1 = d1(params: p)
+        let d2 = d2(params: p)
+
+        let term1 = -S * normalPDF(d1) * sigma * exp(-q * T) / (2.0 * sqrt(T))
+
+        switch p.type {
+        case .call:
+            let term2 = q * S * exp(-q * T) * normalCDF(d1)
+            let term3 = -r * K * exp(-r * T) * normalCDF(d2)
+            return term1 + term2 + term3
+        case .put:
+            let term2 = -q * S * exp(-q * T) * normalCDF(-d1)
+            let term3 = r * K * exp(-r * T) * normalCDF(-d2)
+            return term1 + term2 + term3
+        }
+    }
+
+    static func rho(params p: OptionParameters) -> Double {
+        let K = p.strike
+        let T = p.time
+        let r = p.rate
+
+        let d2 = d2(params: p)
+
+        switch p.type {
+        case .call:
+            return K * T * exp(-r * T) * normalCDF(d2)
+        case .put:
+            return -K * T * exp(-r * T) * normalCDF(-d2)
+        }
+    }
+}
+
+
 #if DEBUG
 func testBlackScholes() {
     let params = OptionParameters(

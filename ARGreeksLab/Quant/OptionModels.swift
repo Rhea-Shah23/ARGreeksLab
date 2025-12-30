@@ -6,3 +6,19 @@
 //
 
 import Foundation
+
+enum OptionType {
+    case call
+    case put
+}
+
+struct OptionParameters {
+    var spot: Double      // S
+    var strike: Double    // K
+    var time: Double      // T (years)
+    var volatility: Double // sigma
+    var rate: Double      // r
+    var dividend: Double  // q
+    var type: OptionType
+}
+

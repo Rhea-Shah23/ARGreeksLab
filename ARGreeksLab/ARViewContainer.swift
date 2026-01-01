@@ -1,6 +1,5 @@
-//ARViewContainer
-//Part of ARGreeksLab
-
+// ARViewContainer.swift
+// Part of ARGreeksLab
 // Created by Rhea Shah on 12/30/2025
 
 import SwiftUI
@@ -63,8 +62,12 @@ struct ARViewContainer: UIViewRepresentable {
 
             vm.$resetSelectionAndAnchors
                 .sink { [weak self] _ in
-                    self?.resetScene()
-                    vm.clearSelection()
+                    guard let self = self else { return }
+                    // Defer mutations to the next runloop tick
+                    DispatchQueue.main.async {
+                        self.resetScene()
+                        vm.clearSelection()
+                    }
                 }
                 .store(in: &cancellables)
         }
@@ -245,4 +248,3 @@ struct ARViewContainer: UIViewRepresentable {
         }
     }
 }
-

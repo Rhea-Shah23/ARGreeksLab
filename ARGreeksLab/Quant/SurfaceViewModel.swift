@@ -1,6 +1,5 @@
 // SurfaceViewModel.swift
 // Part of ARGreeksLab
-
 // Created by Rhea Shah on 12/30/2025
 
 import Foundation
@@ -158,5 +157,6 @@ final class SurfaceViewModel: ObservableObject {
         selectedGamma = nil
     }
 }
+
 
 

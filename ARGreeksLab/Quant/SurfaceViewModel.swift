@@ -25,6 +25,11 @@ final class SurfaceViewModel: ObservableObject {
     @Published var selectedT: Double?
     @Published var selectedPrice: Double?
     @Published var selectedDelta: Double?
+    @Published var selectedGamma: Double?
+
+    // Comparison
+    @Published var comparisonEnabled: Bool = false
+    private var baselineGrid: SurfaceGrid?
 
     struct SurfaceData {
         let heights: [[Float]]
@@ -44,10 +49,9 @@ final class SurfaceViewModel: ObservableObject {
         )
     }
 
-    func generateSurfaceData() -> SurfaceData {
+    private func generateGrid() -> SurfaceGrid {
         let base = makeBaseParams()
-
-        let grid = SurfaceGrid.generate(
+        return SurfaceGrid.generate(
             base: base,
             sMinFactor: 0.5,
             sMaxFactor: 1.5,
@@ -57,6 +61,10 @@ final class SurfaceViewModel: ObservableObject {
             tSteps: tSteps,
             mode: mode
         )
+    }
+
+    func generateSurfaceData() -> SurfaceData {
+        let grid = generateGrid()
 
         var heights = Array(
             repeating: Array(repeating: Float(0), count: tSteps),
@@ -87,6 +95,42 @@ final class SurfaceViewModel: ObservableObject {
         generateSurfaceData().heights
     }
 
+    func saveBaseline() {
+        baselineGrid = generateGrid()
+    }
+
+    func generateDifferenceHeights() -> [[Float]]? {
+        guard let baseline = baselineGrid else { return nil }
+        let current = generateGrid()
+
+        guard baseline.sAxis.count == current.sAxis.count,
+              baseline.tAxis.count == current.tAxis.count else { return nil }
+
+        var diff = Array(
+            repeating: Array(repeating: Float(0), count: tSteps),
+            count: sSteps
+        )
+
+        for i in 0..<sSteps {
+            for j in 0..<tSteps {
+                let d = current.values[i][j] - baseline.values[i][j]
+                diff[i][j] = Float(d)
+            }
+        }
+
+        let flat = diff.flatMap { $0 }
+        if let maxAbs = flat.map({ abs($0) }).max(), maxAbs > 0 {
+            let scale: Float = 0.1 / maxAbs
+            for i in 0..<sSteps {
+                for j in 0..<tSteps {
+                    diff[i][j] *= scale
+                }
+            }
+        }
+
+        return diff
+    }
+
     func updateSelection(i: Int, j: Int, sAxis: [Double], tAxis: [Double]) {
         guard i >= 0, i < sAxis.count,
               j >= 0, j < tAxis.count else { return }
@@ -100,5 +144,7 @@ final class SurfaceViewModel: ObservableObject {
         selectedT = tAxis[j]
         selectedPrice = Quant.price(params: p)
         selectedDelta = Quant.delta(params: p)
+        selectedGamma = Quant.gamma(params: p)
     }
 }
+

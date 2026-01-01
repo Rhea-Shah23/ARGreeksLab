@@ -6,6 +6,7 @@
 import SwiftUI
 import RealityKit
 import ARKit
+import Combine
 
 struct ARViewContainer: UIViewRepresentable {
     @EnvironmentObject var surfaceVM: SurfaceViewModel
@@ -18,14 +19,12 @@ struct ARViewContainer: UIViewRepresentable {
         config.environmentTexturing = .automatic
         arView.session.run(config)
 
-        // Tap to inspect
         let tap = UITapGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleTap(_:))
         )
         arView.addGestureRecognizer(tap)
 
-        // Long-press to place surface
         let longPress = UILongPressGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleLongPress(_:))
@@ -34,13 +33,13 @@ struct ARViewContainer: UIViewRepresentable {
         arView.addGestureRecognizer(longPress)
 
         context.coordinator.view = arView
-        context.coordinator.surfaceVM = surfaceVM
+        context.coordinator.connect(to: surfaceVM)
 
         return arView
     }
 
     func updateUIView(_ uiView: ARView, context: Context) {
-        context.coordinator.surfaceVM = surfaceVM
+        context.coordinator.connect(to: surfaceVM)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -49,13 +48,36 @@ struct ARViewContainer: UIViewRepresentable {
 
     class Coordinator: NSObject {
         weak var view: ARView?
-        var surfaceVM: SurfaceViewModel?
+        private var surfaceVM: SurfaceViewModel?
+        private var cancellables: Set<AnyCancellable> = []
 
         private var currentModel: ModelEntity?
         private var diffModel: ModelEntity?
         private var lastHeights: [[Float]] = []
         private var lastSAxis: [Double] = []
         private var lastTAxis: [Double] = []
+
+        func connect(to vm: SurfaceViewModel) {
+            surfaceVM = vm
+            cancellables.removeAll()
+
+            vm.$resetSelectionAndAnchors
+                .sink { [weak self] _ in
+                    self?.resetScene()
+                    vm.clearSelection()
+                }
+                .store(in: &cancellables)
+        }
+
+        private func resetScene() {
+            guard let view = view else { return }
+            view.scene.anchors.removeAll()
+            currentModel = nil
+            diffModel = nil
+            lastHeights = []
+            lastSAxis = []
+            lastTAxis = []
+        }
 
         @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
             guard recognizer.state == .began,
@@ -99,9 +121,7 @@ struct ARViewContainer: UIViewRepresentable {
             in view: ARView,
             using vm: SurfaceViewModel
         ) {
-            view.scene.anchors.removeAll()
-            currentModel = nil
-            diffModel = nil
+            resetScene()
 
             let data = vm.generateSurfaceData()
             lastHeights = data.heights
@@ -111,7 +131,6 @@ struct ARViewContainer: UIViewRepresentable {
             let width: Float = 0.6
             let depth: Float = 0.6
 
-            // Main surface
             let mainMesh = makeMeshFromHeightMap(
                 heights: lastHeights,
                 width: width,
@@ -130,7 +149,6 @@ struct ARViewContainer: UIViewRepresentable {
             let anchor = AnchorEntity(world: pos)
             anchor.addChild(mainEntity)
 
-            // Optional difference surface
             if vm.comparisonEnabled, let diffHeights = vm.generateDifferenceHeights() {
                 let diffMesh = makeMeshFromHeightMap(
                     heights: diffHeights,
@@ -142,8 +160,6 @@ struct ARViewContainer: UIViewRepresentable {
                 diffMaterial.color = .init(tint: .red, texture: nil)
 
                 let diffEntity = ModelEntity(mesh: diffMesh, materials: [diffMaterial])
-
-                // Offset slightly in X so they sit side-by-side
                 diffEntity.position = SIMD3<Float>(pos.x + width + 0.1, pos.y, pos.z)
                 anchor.addChild(diffEntity)
                 diffModel = diffEntity
@@ -229,3 +245,4 @@ struct ARViewContainer: UIViewRepresentable {
         }
     }
 }
+

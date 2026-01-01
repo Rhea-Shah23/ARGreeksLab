@@ -51,9 +51,14 @@ struct ContentView: View {
 
     private var controlPanel: some View {
         VStack(spacing: 8) {
-            Text("Spot: \(Int(surfaceVM.spot))  σ: \(String(format: \"%.2f\", surfaceVM.volatility))  T: \(String(format: \"%.2f\", surfaceVM.timeMax))")
-                .font(.caption)
-                .padding(.top, 4)
+            Text(
+                "Spot: \(Int(surfaceVM.spot))  " +
+                "σ: \(String(format: "%.2f", surfaceVM.volatility))  " +
+                "T: \(String(format: "%.2f", surfaceVM.timeMax))"
+            )
+            .font(.caption)
+            .padding(.top, 4)
+
 
             Slider(value: $surfaceVM.spot, in: 50...150, step: 1)
             Slider(value: $surfaceVM.volatility, in: 0.05...0.8, step: 0.01)

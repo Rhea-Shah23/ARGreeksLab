@@ -30,12 +30,14 @@ struct ContentView: View {
             if let s = surfaceVM.selectedS,
                let t = surfaceVM.selectedT,
                let price = surfaceVM.selectedPrice,
-               let delta = surfaceVM.selectedDelta {
+               let delta = surfaceVM.selectedDelta,
+               let gamma = surfaceVM.selectedGamma {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(String(format: "S = %.2f, T = %.2f", s, t))
                     Text(String(format: "Price = %.4f", price))
                     Text(String(format: "Delta = %.4f", delta))
+                    Text(String(format: "Gamma = %.4f", gamma))
                 }
                 .font(.caption)
                 .padding(8)
@@ -49,21 +51,34 @@ struct ContentView: View {
 
     private var controlPanel: some View {
         VStack(spacing: 8) {
-            Text("Spot: \(Int(surfaceVM.spot))  σ: \(String(format: "%.2f", surfaceVM.volatility))  T: \(String(format: "%.2f", surfaceVM.timeMax))")
+            Text("Spot: \(Int(surfaceVM.spot))  σ: \(String(format: \"%.2f\", surfaceVM.volatility))  T: \(String(format: \"%.2f\", surfaceVM.timeMax))")
                 .font(.caption)
                 .padding(.top, 4)
 
             Slider(value: $surfaceVM.spot, in: 50...150, step: 1)
-
             Slider(value: $surfaceVM.volatility, in: 0.05...0.8, step: 0.01)
-
             Slider(value: $surfaceVM.timeMax, in: 0.1...2.0, step: 0.05)
 
             Picker("Mode", selection: $surfaceVM.mode) {
                 Text("Price").tag(SurfaceMode.price)
                 Text("Delta").tag(SurfaceMode.delta)
+                Text("Gamma").tag(SurfaceMode.gamma)
             }
             .pickerStyle(.segmented)
+
+            HStack {
+                Button("Save Baseline") {
+                    surfaceVM.saveBaseline()
+                }
+                .font(.caption2)
+                .padding(6)
+                .background(Color.blue.opacity(0.2))
+                .cornerRadius(6)
+
+                Toggle("Compare", isOn: $surfaceVM.comparisonEnabled)
+                    .toggleStyle(SwitchToggleStyle())
+                    .font(.caption2)
+            }
 
             Spacer().frame(height: 8)
         }
@@ -71,3 +86,4 @@ struct ContentView: View {
         .background(.ultraThinMaterial)
     }
 }
+

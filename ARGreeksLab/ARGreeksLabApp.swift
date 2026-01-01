@@ -10,11 +10,16 @@ import SwiftUI
 @main
 struct ARGreeksLabApp: App {
     @StateObject private var surfaceVM = SurfaceViewModel()
+    @State private var showAbout = false
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(showAbout: $showAbout)
                 .environmentObject(surfaceVM)
+                .sheet(isPresented: $showAbout) {
+                    AboutView()
+                }
         }
     }
 }
+

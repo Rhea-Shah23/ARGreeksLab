@@ -18,11 +18,20 @@ struct ARViewContainer: UIViewRepresentable {
         config.environmentTexturing = .automatic
         arView.session.run(config)
 
+        // Tap to inspect
         let tap = UITapGestureRecognizer(
             target: context.coordinator,
             action: #selector(Coordinator.handleTap(_:))
         )
         arView.addGestureRecognizer(tap)
+
+        // Long-press to place surface
+        let longPress = UILongPressGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleLongPress(_:))
+        )
+        longPress.minimumPressDuration = 0.5
+        arView.addGestureRecognizer(longPress)
 
         context.coordinator.view = arView
         context.coordinator.surfaceVM = surfaceVM
@@ -42,29 +51,18 @@ struct ARViewContainer: UIViewRepresentable {
         weak var view: ARView?
         var surfaceVM: SurfaceViewModel?
 
-        // Keep last placed model and its grid to interpret taps
         private var currentModel: ModelEntity?
+        private var diffModel: ModelEntity?
         private var lastHeights: [[Float]] = []
         private var lastSAxis: [Double] = []
         private var lastTAxis: [Double] = []
 
-        @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
-            guard let view = view,
+        @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+            guard recognizer.state == .began,
+                  let view = view,
                   let vm = surfaceVM else { return }
 
             let location = recognizer.location(in: view)
-
-            // 1) Try tapping existing model (inspect)
-            if let model = currentModel {
-                let hits = view.hitTest(location)
-                if let result = hits.first(where: { $0.entity == model }) {
-                    let local = result.position   // local coordinates in model space
-                    inspectHit(localPosition: local, using: vm)
-                    return
-                }
-            }
-
-            // 2) Otherwise, place new surface on detected plane
             let results = view.raycast(
                 from: location,
                 allowing: .existingPlaneInfinite,
@@ -82,6 +80,20 @@ struct ARViewContainer: UIViewRepresentable {
             placeSurface(at: position, in: view, using: vm)
         }
 
+        @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
+            guard let view = view,
+                  let vm = surfaceVM,
+                  let model = currentModel else { return }
+
+            let location = recognizer.location(in: view)
+            let hits = view.hitTest(location)
+
+            if let result = hits.first(where: { $0.entity == model }) {
+                let local = result.position
+                inspectHit(localPosition: local, using: vm)
+            }
+        }
+
         private func placeSurface(
             at position: SIMD3<Float>,
             in view: ARView,
@@ -89,36 +101,56 @@ struct ARViewContainer: UIViewRepresentable {
         ) {
             view.scene.anchors.removeAll()
             currentModel = nil
+            diffModel = nil
 
-            // Get surface data from quant engine
             let data = vm.generateSurfaceData()
             lastHeights = data.heights
             lastSAxis = data.sAxis
             lastTAxis = data.tAxis
 
-            let width: Float = 0.9
-            let depth: Float = 0.9
+            let width: Float = 0.6
+            let depth: Float = 0.6
 
-            let mesh = makeMeshFromHeightMap(
+            // Main surface
+            let mainMesh = makeMeshFromHeightMap(
                 heights: lastHeights,
                 width: width,
                 depth: depth
             )
 
-            var material = SimpleMaterial()
-            material.color = .init(tint: .blue, texture: nil)
+            var mainMaterial = SimpleMaterial()
+            mainMaterial.color = .init(tint: .blue, texture: nil)
 
-            let modelEntity = ModelEntity(mesh: mesh, materials: [material])
+            let mainEntity = ModelEntity(mesh: mainMesh, materials: [mainMaterial])
 
             var pos = position
             pos.y += 0.001
-            modelEntity.position = pos
+            mainEntity.position = pos
 
             let anchor = AnchorEntity(world: pos)
-            anchor.addChild(modelEntity)
-            view.scene.addAnchor(anchor)
+            anchor.addChild(mainEntity)
 
-            currentModel = modelEntity
+            // Optional difference surface
+            if vm.comparisonEnabled, let diffHeights = vm.generateDifferenceHeights() {
+                let diffMesh = makeMeshFromHeightMap(
+                    heights: diffHeights,
+                    width: width,
+                    depth: depth
+                )
+
+                var diffMaterial = SimpleMaterial()
+                diffMaterial.color = .init(tint: .red, texture: nil)
+
+                let diffEntity = ModelEntity(mesh: diffMesh, materials: [diffMaterial])
+
+                // Offset slightly in X so they sit side-by-side
+                diffEntity.position = SIMD3<Float>(pos.x + width + 0.1, pos.y, pos.z)
+                anchor.addChild(diffEntity)
+                diffModel = diffEntity
+            }
+
+            view.scene.addAnchor(anchor)
+            currentModel = mainEntity
         }
 
         private func inspectHit(
@@ -133,8 +165,8 @@ struct ARViewContainer: UIViewRepresentable {
             let cols = lastHeights.first?.count ?? 0
             guard rows > 1, cols > 1 else { return }
 
-            let width: Float = 0.9
-            let depth: Float = 0.9
+            let width: Float = 0.6
+            let depth: Float = 0.6
             let dx = width / Float(cols - 1)
             let dz = depth / Float(rows - 1)
             let xOffset = -width / 2
@@ -197,4 +229,3 @@ struct ARViewContainer: UIViewRepresentable {
         }
     }
 }
-

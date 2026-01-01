@@ -96,8 +96,8 @@ struct ARViewContainer: UIViewRepresentable {
             lastSAxis = data.sAxis
             lastTAxis = data.tAxis
 
-            let width: Float = 0.6
-            let depth: Float = 0.6
+            let width: Float = 0.9
+            let depth: Float = 0.9
 
             let mesh = makeMeshFromHeightMap(
                 heights: lastHeights,
@@ -133,8 +133,8 @@ struct ARViewContainer: UIViewRepresentable {
             let cols = lastHeights.first?.count ?? 0
             guard rows > 1, cols > 1 else { return }
 
-            let width: Float = 0.6
-            let depth: Float = 0.6
+            let width: Float = 0.9
+            let depth: Float = 0.9
             let dx = width / Float(cols - 1)
             let dz = depth / Float(rows - 1)
             let xOffset = -width / 2

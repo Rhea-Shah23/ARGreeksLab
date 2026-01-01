@@ -10,6 +10,7 @@ import Foundation
 enum SurfaceMode {
     case price
     case delta
+    case gamma
 }
 
 struct SurfaceGrid {
@@ -62,6 +63,8 @@ struct SurfaceGrid {
                     v = Quant.price(params: p)
                 case .delta:
                     v = Quant.delta(params: p)
+                case .gamma:
+                    v = Quant.gamma(params: p)
                 }
 
                 values[i][j] = v

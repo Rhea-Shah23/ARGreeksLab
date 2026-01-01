@@ -20,16 +20,20 @@ final class SurfaceViewModel: ObservableObject {
     let sSteps: Int = 40
     let tSteps: Int = 40
 
-    // Selection info for overlay
     @Published var selectedS: Double?
     @Published var selectedT: Double?
     @Published var selectedPrice: Double?
     @Published var selectedDelta: Double?
     @Published var selectedGamma: Double?
 
-    // Comparison
     @Published var comparisonEnabled: Bool = false
     private var baselineGrid: SurfaceGrid?
+
+    // Reset trigger: toggled when user taps Reset
+    @Published var resetSelectionAndAnchors: Bool = false
+
+    // Simple debug message string for future use
+    @Published var debugMessage: String?
 
     struct SurfaceData {
         let heights: [[Float]]
@@ -77,7 +81,6 @@ final class SurfaceViewModel: ObservableObject {
             }
         }
 
-        // Normalize heights for AR scale
         let flat = heights.flatMap { $0 }
         if let maxAbs = flat.map({ abs($0) }).max(), maxAbs > 0 {
             let scale: Float = 0.1 / maxAbs
@@ -146,5 +149,14 @@ final class SurfaceViewModel: ObservableObject {
         selectedDelta = Quant.delta(params: p)
         selectedGamma = Quant.gamma(params: p)
     }
+
+    func clearSelection() {
+        selectedS = nil
+        selectedT = nil
+        selectedPrice = nil
+        selectedDelta = nil
+        selectedGamma = nil
+    }
 }
+
 
